@@ -76,9 +76,50 @@ hoodPop$pop10<-as.numeric(gsub(",","", hoodPop$pop10))
 
 DCSum<-merge(DCcount,hoodPop,by="NAME")[c(1:5,8)]
 DCSum$Per<-(DCSum$Total/DCSum$pop10)*1000
-DCSum<-DCSum[order(DCSum$Per),]
+DCSum<-DCSum[order(DCSum$UnitsProp),]
+DCSum$UnitsProp<-DCSum$Unit/DCSum$Total
 
 bnbmap <- merge(clusterMap,DCSum, by="NAME",all.x=TRUE)
 
 writeOGR(bnbmap, 'bnbmap.geojson','bnbmapmap', driver='GeoJSON',check_exists = FALSE)
+rm(list=setdiff(ls(), c("DCbnb","DClistings")))
 
+### Create GeoJson with Indicators of Whole Unit, Multi-Owners, High Activity###
+### Create GeoJson with Indicators of Whole Unit, Multi-Owners, High Activity###
+### Create GeoJson with Indicators of Whole Unit, Multi-Owners, High Activity###
+#Unit
+DCbnb$Unit<-ifelse(DCbnb$room_type=="Entire home/apt",1,0)
+
+#Multi host
+hostID<-ddply(DCbnb, c("host_id"), nrow)
+hostID$multi<-ifelse(hostID$V1>1,1,0)
+hostID<-hostID[c(1,3)]
+DCbnbV2<-merge(DCbnb,hostID,by="host_id")
+table(DCbnbV2$multi)
+
+#High Activity
+DCreviews<-read.csv('reviews.csv',stringsAsFactors=FALSE,strip.white=TRUE) 
+DCreviews$Ddate <- as.Date(as.character(DCreviews$date), "%Y-%m-%d")
+DCreviewsYr<-subset(DCreviews,DCreviews$Ddate>"2014-10-03")
+DCreviewsID<-ddply(DCreviewsYr,c("listing_id"),nrow)
+colnames(DCreviewsID)<-c("listing_id","reviews1Yr")
+
+DCreviews<-DCreviews[order(DCreviews$listing_id,DCreviews$Ddate),]
+firstR<-by(DCreviews, DCreviews$listing_id, head, n=1)
+FirstR.df<-do.call("rbind", as.list(firstR))[c(1,3)]
+
+DCbnbV2.1<-merge(x=DCbnbV2,y=DCreviewsID,by.x="id",by.y="listing_id",all=TRUE)
+DCbnbV3<-merge(x=DCbnbV2.1, y=FirstR.df,by.x="id",by.y="listing_id",all.x=TRUE)
+
+DCbnbV3$reviews1Yr[is.na(DCbnbV3$reviews1Yr)] <- 0
+#per insideairbnb estimate average stay of 3 nights unless min greater
+DCbnbV3$estNights<-ifelse(DCbnbV3$minimum_nights<3,3,DCbnbV3$minimum_nights)
+#per insideairbnb estimate reviews are record 50% of stays
+DCbnbV3$estYr<-(DCbnbV3$reviews1Yr*2)*DCbnbV3$estNights
+#for listings with less than a year's activity, extrapolate based on available data
+DCbnbV3$days<-DCbnbV3$Ddate-(as.Date("2014-10-03"))
+DCbnbV3$YrNights<-ifelse(DCbnbV3$days>0,
+                           (((DCbnbV3$days*DCbnbV3$est_nights1Yr)/365)), DCbnbV3$est_nights1Yr)
+DCbnbFin<-DCbnbV3[c(7,8,19,20,26)]
+
+write.csv(DCbnbFin,"DCbnb.csv")
