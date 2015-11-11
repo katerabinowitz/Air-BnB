@@ -1,4 +1,5 @@
 library(reshape)
+library (plyr)
 setwd("/Users/katerabinowitz/Documents/DataLensDC/Air-BnB/city-listings")
 
 ### Air BnB Per Capita in Cities w Available Data ###
@@ -84,11 +85,12 @@ bnbmap <- merge(clusterMap,DCSum, by="NAME",all.x=TRUE)
 writeOGR(bnbmap, 'bnbmap.geojson','bnbmapmap', driver='GeoJSON',check_exists = FALSE)
 rm(list=setdiff(ls(), c("DCbnb","DClistings")))
 
-### Create GeoJson with Indicators of Whole Unit, Multi-Owners, High Activity###
-### Create GeoJson with Indicators of Whole Unit, Multi-Owners, High Activity###
-### Create GeoJson with Indicators of Whole Unit, Multi-Owners, High Activity###
+### Indicators of Whole Unit, Multi-Owners, High Activity###
+### Indicators of Whole Unit, Multi-Owners, High Activity###
+### Indicators of Whole Unit, Multi-Owners, High Activity###
 #Unit
 DCbnb$Unit<-ifelse(DCbnb$room_type=="Entire home/apt",1,0)
+aggregate(DCbnb$price ~ DCbnb$room_type, DCbnb,mean)
 
 #Multi host
 hostID<-ddply(DCbnb, c("host_id"), nrow)
@@ -108,7 +110,7 @@ DCreviews<-DCreviews[order(DCreviews$listing_id,DCreviews$Ddate),]
 firstR<-by(DCreviews, DCreviews$listing_id, head, n=1)
 FirstR.df<-do.call("rbind", as.list(firstR))[c(1,3)]
 
-DCbnbV2.1<-merge(x=DCbnbV2,y=DCreviewsID,by.x="id",by.y="listing_id",all=TRUE)
+DCbnbV2.1<-merge(x=DCbnbV2,y=DCreviewsID,by.x="id",by.y="listing_id",all.x=TRUE)
 DCbnbV3<-merge(x=DCbnbV2.1, y=FirstR.df,by.x="id",by.y="listing_id",all.x=TRUE)
 
 DCbnbV3$reviews1Yr[is.na(DCbnbV3$reviews1Yr)] <- 0
@@ -117,9 +119,28 @@ DCbnbV3$estNights<-ifelse(DCbnbV3$minimum_nights<3,3,DCbnbV3$minimum_nights)
 #per insideairbnb estimate reviews are record 50% of stays
 DCbnbV3$estYr<-(DCbnbV3$reviews1Yr*2)*DCbnbV3$estNights
 #for listings with less than a year's activity, extrapolate based on available data
-DCbnbV3$days<-DCbnbV3$Ddate-(as.Date("2014-10-03"))
-DCbnbV3$YrNights<-ifelse(DCbnbV3$days>0,
-                           (((DCbnbV3$days*DCbnbV3$est_nights1Yr)/365)), DCbnbV3$est_nights1Yr)
-DCbnbFin<-DCbnbV3[c(7,8,19,20,26)]
+DCbnbV3$days<-(as.Date("2015-10-03"))-DCbnbV3$Ddate
+DCbnbV3$dayN<-as.numeric(DCbnbV3$days)
+DCbnbV3$YrNights<-ifelse(DCbnbV3$days<365,
+                           (((365*DCbnbV3$estYr)/DCbnbV3$dayN)), DCbnbV3$estYr)
+DCbnbV3$HighActivity<-ifelse(DCbnbV3$YrNights>90,1,0)
+DCbnbV3$Flagged<-ifelse(DCbnbV3$HighActivity==1 & DCbnbV3$Unit==1,1,0)
+Flagged<-subset(DCbnbV3, DCbnbV3$Flagged==1)
+Unit<-subset(DCbnbV3,DCbnbV3$Unit==1)
 
-write.csv(DCbnbFin,"DCbnb.csv")
+#Create output file for bar graph - all airbnb, whole unit, high activity / multi-owner
+Out1<-as.data.frame(table(DCbnbV3$multi))
+colnames(Out1)<-c("MultiO","Listings")
+TUnit<-as.data.frame(t(Out1))
+Out2<-as.data.frame(table(Unit$Unit,Unit$multi))[c(2:3)]
+colnames(Out2)<-c("MultiO","Units")
+TUnit2<-as.data.frame(t(Out2))
+Out3<-as.data.frame(table(Flagged$Flagged,Flagged$multi))[c(2:3)]
+colnames(Out3)<-c("MultiO","HA-Units")
+TUnit3<-as.data.frame(t(Out3))
+
+Output<-rbind(TUnit,TUnit2,TUnit3)[-c(1, 3, 5), ]
+colnames(Output)<-c("Single","Multi")
+Output$Type<-c('All Active Airbnb Listings','Whole Property Listings','High-Activity Property Listings')
+
+write.csv(Output,"DCbnbOutput.csv")
