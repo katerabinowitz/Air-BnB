@@ -1,10 +1,4 @@
-Listings by a Multi-List Host,Listings by a Single-List Host,Type,,
-1038,1817,All Active Airbnb Listings,,
-568,1282,Entire Property Listings,,
-291,667,High-Activity Listings of Entire Properties,,
-,,,,
-,,,,
-,,,,
-,,,,
-,,,,
-,,,,
+"Single","Multi","Type"
+"1817","1038","Active Airbnb Listings"
+"1282"," 568","Entire Property"
+"667","291","High-Activity, Entire Property"

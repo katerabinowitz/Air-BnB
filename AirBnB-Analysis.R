@@ -95,9 +95,12 @@ aggregate(DCbnb$price ~ DCbnb$room_type, DCbnb,mean)
 #Multi host
 hostID<-ddply(DCbnb, c("host_id"), nrow)
 hostID$multi<-ifelse(hostID$V1>1,1,0)
+multi<-subset(hostID,hostID$multi==1)
+summary(multi$V1)
 hostID<-hostID[c(1,3)]
 DCbnbV2<-merge(DCbnb,hostID,by="host_id")
 table(DCbnbV2$multi)
+table(multi$alot)
 
 #High Activity
 DCreviews<-read.csv('reviews.csv',stringsAsFactors=FALSE,strip.white=TRUE) 
@@ -141,6 +144,6 @@ TUnit3<-as.data.frame(t(Out3))
 
 Output<-rbind(TUnit,TUnit2,TUnit3)[-c(1, 3, 5), ]
 colnames(Output)<-c("Single","Multi")
-Output$Type<-c('All Active Airbnb Listings','Whole Property Listings','High-Activity Property Listings')
+Output$Type<-c('Active Airbnb Listings','Entire Property','High-Activity, Entire Property')
 
 write.csv(Output,"DCbnbOutput.csv",row.names=FALSE)
