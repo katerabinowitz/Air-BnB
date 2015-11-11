@@ -143,4 +143,4 @@ Output<-rbind(TUnit,TUnit2,TUnit3)[-c(1, 3, 5), ]
 colnames(Output)<-c("Single","Multi")
 Output$Type<-c('All Active Airbnb Listings','Whole Property Listings','High-Activity Property Listings')
 
-write.csv(Output,"DCbnbOutput.csv")
+write.csv(Output,"DCbnbOutput.csv",row.names=FALSE)
