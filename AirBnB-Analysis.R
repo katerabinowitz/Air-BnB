@@ -1,5 +1,6 @@
 library(reshape)
 library (plyr)
+library(rgdal)
 setwd("/Users/katerabinowitz/Documents/DataLensDC/Air-BnB/city-listings")
 
 ### Air BnB Per Capita in Cities w Available Data ###
@@ -143,7 +144,8 @@ colnames(Out3)<-c("MultiO","HA-Units")
 TUnit3<-as.data.frame(t(Out3))
 
 Output<-rbind(TUnit,TUnit2,TUnit3)[-c(1, 3, 5), ]
-colnames(Output)<-c("Single","Multi")
+names(Output)<-c("Single-Listing","Multi-Listing")
+
 Output$Type<-c('Active Airbnb Listings','Entire Property','High-Activity, Entire Property')
 
 write.csv(Output,"DCbnbOutput.csv",row.names=FALSE)
